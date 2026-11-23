@@ -1,6 +1,9 @@
 from database.parco_DAO import ParcoDAO
 from database.escursione_DAO import EscursioneDAO
 from database.punto_interesse_DAO import PuntoInteresseDAO
+from model import escursione
+from model.escursione import Escursione
+
 
 class Model:
     def __init__(self):
@@ -39,6 +42,22 @@ class Model:
             --> Ogni PuntoInteresse ha un set di Escursioni.
         """
         # TODO
+        # Il DAO restituisce una lista di dizionari, uno per ogni riga della
+        # tabella ponte: {"id_escursione": ..., "id_punto_interesse": ...}
+
+        relazioni = EscursioneDAO.get_escursioni_punti_interesse()
+        if relazioni: # cosi gestisco nel caso il database non giri -> None
+            for riga in relazioni:
+                # l'id preso dalla riga fa da chiave per il dizionario corrispondente
+                escursione = self.escursioni_map[riga["id_escursione"]]
+                punto_interesse = self.punti_interesse_map[riga["id_punto_interesse"]]
+
+                # Collegamento nelle due direzioni (relazione N:N)
+                # 1) il punto di interesse "sa" in quali escursioni compare
+                punto_interesse.escursioni.add(escursione)
+                # 2) l'escursione "sa" quali punti di interesse include
+                escursione.punti_interesse.add(punto_interesse)
+
 
     def genera_pacchetto(self, id_parco: str, max_giorni: int = None, max_budget: float = None):
         """
@@ -56,6 +75,10 @@ class Model:
         self._valore_ottimo = -1
 
         # TODO
+        self._lista_escursioni_per_parco = []                         # 1) lista vuota prima del ciclo
+        for escursione in self.escursioni_map.values():     # 2) scorro gli OGGETTI, non le chiavi
+            if escursione.id_parco == id_parco:           # 3) guardo un attributo dell'oggetto
+                self._lista_escursioni_per_parco.append(escursione)   # 4) tengo solo quelli giusti
 
         return self._pacchetto_ottimo, self._costo, self._valore_ottimo
 
@@ -63,3 +86,18 @@ class Model:
         """ Algoritmo di ricorsione che deve trovare il pacchetto che massimizza il voto complessivo dei visitatori"""
 
         # TODO: è possibile cambiare i parametri formali della funzione se ritenuto opportuno
+
+        for e in self._lista_escursioni_per_parco:
+            if (durata_corrente + e.durata_giorni <= self.max_giorni) and (costo_corrente + e.costo <= self.max_budget):
+
+                voto_e = 0
+                for p in e.punti_interesse:
+                    voto_e += p.voto_visitatori
+
+                nuovi_punti = punti_usati.union(e.punti_interesse)
+                pacchetto_parziale.append(e)
+                self._ricorsione(start_index, pacchetto_parziale, durata_corrente + e.durata_giorni, costo_corrente + e.costo, valore_corrente + voto_e, nuovi_punti)
+                pacchetto_parziale.pop()
+
+
+
