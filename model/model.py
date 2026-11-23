@@ -164,6 +164,3 @@ class Model:
                     # rimuovo l'ultima escursione aggiunta per "pulire" pacchetto_parziale
                     # prima di provare la prossima escursione nel ciclo for
                     pacchetto_parziale.pop()
-
-
-
